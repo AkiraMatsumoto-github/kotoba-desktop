@@ -155,6 +155,7 @@
 - [ ] **P3-01** 逐次モード（F8）: 話の切れ目ごとに入力する
 - [ ] **P3-02** 音声コマンド（「改行」「送信」など）を検討する
 - [ ] **P3-03** exe 単体での配布（PyInstaller / Nuitka）
+  → PyInstaller + Inno Setup のインストーラーを作り、タグの push で GitHub Release に載せる（`packaging/`、`.github/workflows/release.yml`）。固めた exe でモデルの読み込みと GPU での認識は確認済み。インストーラーの動作は最初のリリースで確かめる
 
 ## 未決事項
 

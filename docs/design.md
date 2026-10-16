@@ -384,7 +384,7 @@ kotoba-desktop/
 - `uv tool install --editable .` で常駐用の `kotoba-desktop.exe`（コンソール窓なし）を `%USERPROFILE%\.local\bin` に作り、スタートアップフォルダにショートカットを置く。editable なのでコードを直したら再起動だけで反映される。
 - 二重起動は名前付きミューテックスで防ぐ。
 - モデルは初回だけ取得し、以降は `HF_HUB_OFFLINE=1` でネットワークに触れない。
-- exe 単体での配布（PyInstaller / Nuitka）は必要になってから検討する。
+- 利用者向けには PyInstaller（onedir）で固めたアプリを Inno Setup のインストーラーにして GitHub Release で配る。ユーザーごとに `%LOCALAPPDATA%\Programs\kotoba-desktop` へ入れ（管理者権限は不要）、自動起動はインストーラーの選択肢でスタートアップにショートカットを置く。cuBLAS と cuDNN は同梱し、モデルは同梱せず初回の起動時に取得する。nvidia-cublas-cu12 と一緒に入る nvrtc は認識で読み込まれないので外す。
 
 ## 10. リスクと検証計画
 

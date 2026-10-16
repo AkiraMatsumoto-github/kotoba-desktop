@@ -24,7 +24,9 @@ def register_cuda_dlls() -> None:
     """
     if sys.platform != "win32":
         return
-    for site in map(Path, sys.path):
+    # PyInstaller で固めたアプリでは _internal（sys._MEIPASS）の下に nvidia/*/bin を置く
+    bundle = getattr(sys, "_MEIPASS", None)
+    for site in map(Path, dict.fromkeys([bundle, *sys.path] if bundle else sys.path)):
         nvidia = site / "nvidia"
         if not nvidia.is_dir():
             continue

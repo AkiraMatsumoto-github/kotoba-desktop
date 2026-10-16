@@ -29,20 +29,27 @@ _STATE_COLOR = {
 }
 
 
-def make_icon(color: str) -> QIcon:
-    """色付きの円にマイクの記号を描いたアイコン。"""
-    pixmap = QPixmap(64, 64)
+def make_pixmap(color: str, size: int = 64) -> QPixmap:
+    """色付きの円にマイクの記号を描いた画像。配布用の exe のアイコンもこれで作る。"""
+    pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(color))
-    painter.drawEllipse(2, 2, 60, 60)
+    margin = size / 32
+    painter.drawEllipse(QRectF(margin, margin, size - 2 * margin, size - 2 * margin))
     painter.setPen(QColor("white"))
-    painter.setFont(QFont("Segoe Fluent Icons", 26))
-    painter.drawText(QRectF(0, 0, 64, 64), Qt.AlignmentFlag.AlignCenter, "")
+    font = QFont("Segoe Fluent Icons")
+    font.setPixelSize(round(size * 0.54))
+    painter.setFont(font)
+    painter.drawText(QRectF(0, 0, size, size), Qt.AlignmentFlag.AlignCenter, "")
     painter.end()
-    return QIcon(pixmap)
+    return pixmap
+
+
+def make_icon(color: str) -> QIcon:
+    return QIcon(make_pixmap(color))
 
 
 class Tray(QObject):

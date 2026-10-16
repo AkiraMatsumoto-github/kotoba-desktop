@@ -1,0 +1,33 @@
+name: Release
+
+# v0.1.0 のようなタグを push すると、インストーラーを作って GitHub Release に載せる
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Inno Setup を入れる
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+      - name: ビルド
+        shell: pwsh
+        run: ./packaging/build.ps1 -Version ("${{ github.ref_name }}".TrimStart("v"))
+      - name: Release に載せる
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          gh release create "${{ github.ref_name }}" "dist/kotoba-desktop-$version-setup.exe" `
+            --title "kotoba-desktop $version" --generate-notes

@@ -30,48 +30,21 @@ NVIDIA のドライバは、できるだけ新しいものにしておいてく�
 
 ## インストール
 
-1 回だけ行う作業です。途中でコマンドを入力するところがありますが、表示されているものをそのままコピーして貼り付ければ大丈夫です。
+1. [Releases](https://github.com/AkiraMatsumoto-github/kotoba-desktop/releases/latest) のページを開き、「Assets」にある **`kotoba-desktop-<バージョン>-setup.exe`** をダウンロードします。
+2. ダウンロードしたファイルを開き、画面の案内に従ってインストールします。管理者の権限は要りません。
+   - 「Windows によって PC が保護されました」と出たときは、「**詳細情報**」→「**実行**」を押してください（個人で作っているアプリで、電子署名をしていないために出ます）。
+   - 「Windows にサインインしたときに起動する」にチェックを入れておくと、パソコンを起動するたびに自動で起動します。
+3. インストールが終わると、アプリが起動します。
 
-### 1. uv をインストールする
+**初回の起動時だけ**、音声認識のモデル（約 1.5 GB）を自動でダウンロードします。回線によっては数分〜十数分かかり、終わるまでトレイのアイコンは灰色のままです。
 
-uv は、このアプリを動かすのに必要な Python などを自動で用意してくれるツールです。
-
-スタートメニューで「PowerShell」と検索して開き、次のコマンドを貼り付けて Enter を押します。
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-終わったら、**PowerShell をいったん閉じて**ください（開き直さないと、次の手順で `uv` が見つからないことがあります）。
-
-### 2. アプリをダウンロードする
-
-このページの上にある緑色の「**Code**」ボタン →「**Download ZIP**」でダウンロードし、好きな場所に展開します（例: `C:\Users\あなたの名前\kotoba-desktop`）。
-
-展開したフォルダは、アプリを使っている間は消したり移動したりしないでください。
-
-> Git を使える人は `git clone https://github.com/AkiraMatsumoto-github/kotoba-desktop.git` でも構いません。
-
-### 3. 必要な部品と音声認識のモデルをダウンロードする
-
-展開したフォルダをエクスプローラーで開き、何もないところを右クリック →「**ターミナルで開く**」を選びます。開いた画面で、次の 2 つのコマンドを 1 つずつ実行します。
-
-```powershell
-uv sync
-uv run hf download kotoba-tech/kotoba-whisper-v2.0-faster
-```
-
-合わせて約 3 GB をダウンロードするので、回線によっては数分〜十数分かかります。
+新しいバージョンが出たときは、同じように新しい `setup.exe` を実行すれば上書きされます（設定はそのまま残ります）。
 
 ## 使い方
 
 ### 起動する
 
-手順 3 と同じように、フォルダで「ターミナルで開く」を選んで、次のコマンドを実行します。
-
-```powershell
-uv run kotoba-desktop
-```
+スタートメニューから「**kotoba-desktop**」を選びます。
 
 画面右下のタスクトレイ（時計の近く）に、マイクのアイコンが出ます。アイコンが見当たらないときは、「^」を押すと隠れたアイコンの中にあります。
 
@@ -81,7 +54,7 @@ uv run kotoba-desktop
 | 青 | 使える状態 |
 | 赤 | 録音中 |
 
-ターミナルの画面は閉じても構いません。パソコンを起動するたびに自動で起動させたいときは、下の「[パソコンの起動時に自動で起動する](#パソコンの起動時に自動で起動する)」を参照してください。
+パソコンを起動するたびに自動で起動させたいときは、下の「[パソコンの起動時に自動で起動する](#パソコンの起動時に自動で起動する)」を参照してください。
 
 ### 話して入力する
 
@@ -117,18 +90,7 @@ uv run kotoba-desktop
 
 ## パソコンの起動時に自動で起動する
 
-インストールしたフォルダで「ターミナルで開く」を選び、次の 2 つのコマンドを実行します。
-
-```powershell
-uv tool install --editable .
-powershell -ExecutionPolicy Bypass -File tools\install_startup.ps1
-```
-
-次にパソコンを起動したときから、自動で起動するようになります。やめたいときは、次のコマンドを実行します。
-
-```powershell
-powershell -ExecutionPolicy Bypass -File tools\install_startup.ps1 -Remove
-```
+インストールのときに「Windows にサインインしたときに起動する」を選んでいれば、設定済みです。後から変えたいときは、`setup.exe` をもう一度実行して選び直すか、「設定」→「アプリ」→「スタートアップ」で kotoba-desktop をオン / オフしてください。
 
 ## 困ったとき
 
@@ -137,7 +99,7 @@ powershell -ExecutionPolicy Bypass -File tools\install_startup.ps1 -Remove
 
 - すでに起動していると「既に起動しています」と表示されます。トレイの「^」の中も探してください。
 - 起動に失敗したときは、ログ（`%APPDATA%\kotoba-desktop\kotoba-desktop.log`）に理由が書かれています。エクスプローラーのアドレスバーにこのパスを貼り付けると開けます。
-- 「モデルを読み込めません」と出るときは、インストールの手順 3 をもう一度実行してください。
+- 「モデルを読み込めません」と出るときは、インターネットにつながっていることを確かめて、アプリを起動し直してください（モデルのダウンロードをやり直します）。
 
 </details>
 
@@ -173,10 +135,8 @@ powershell -ExecutionPolicy Bypass -File tools\install_startup.ps1 -Remove
 
 ## アンインストール
 
-1. トレイのアイコンを右クリック →「終了」
-2. 自動起動を登録していた場合は、上の「やめたいとき」のコマンドを実行し、続けて `uv tool uninstall kotoba-desktop` を実行
-3. 次のフォルダを削除
-   - ダウンロードして展開したアプリのフォルダ
+1. 「設定」→「アプリ」→「インストールされているアプリ」で kotoba-desktop の「…」→「アンインストール」を選びます（起動中なら自動で終了します）。
+2. 設定とモデルは残るので、要らなければ次のフォルダも削除します。
    - 設定とログ: `%APPDATA%\kotoba-desktop`
    - 音声認識のモデル: `%USERPROFILE%\.cache\huggingface\hub\models--kotoba-tech--kotoba-whisper-v2.0-faster`
 
@@ -184,7 +144,7 @@ powershell -ExecutionPolicy Bypass -File tools\install_startup.ps1 -Remove
 
 - 音声認識はすべてパソコンの中で行います。音声も、認識した文字も、外部に送りません。
 - 録音した音声と認識した文字は、ファイルに保存しません（直近 10 件の履歴は、アプリを終了すると消えます）。ログにも、文字の中身は書きません。
-- インターネットを使うのは、インストール時と、モデルがまだ無いときのダウンロードだけです。
+- インターネットを使うのは、モデルがまだ無いときのダウンロードだけです。
 
 ## ライセンス
 
@@ -192,7 +152,7 @@ powershell -ExecutionPolicy Bypass -File tools\install_startup.ps1 -Remove
 
 Copyright (c) 2026 AkiraMatsumoto-github
 
-このアプリが使っている主なソフトウェアとモデルは、それぞれのライセンスに従います。どれもインストール時に別途ダウンロードされるもので、このリポジトリには含まれていません。
+このアプリが使っている主なソフトウェアとモデルは、それぞれのライセンスに従います。このリポジトリには含まれていません（インストーラーにはソフトウェアが、モデルは初回の起動時に別途ダウンロードされます）。
 
 | 名前 | 用途 | ライセンス |
 | --- | --- | --- |
@@ -200,8 +160,8 @@ Copyright (c) 2026 AkiraMatsumoto-github
 | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) / [CTranslate2](https://github.com/OpenNMT/CTranslate2) | 音声認識の実行 | MIT |
 | [PySide6](https://doc.qt.io/qtforpython-6/)（Qt for Python） | 画面（パネル、トレイ、設定画面） | LGPL-3.0 |
 | [sounddevice](https://github.com/spatialaudio/python-sounddevice) / [soxr](https://github.com/dofuuz/python-soxr) | 録音 / 音声の変換 | MIT / LGPL-2.1 |
-| NVIDIA cuBLAS（nvidia-cublas-cu12） | GPU での計算 | NVIDIA のソフトウェア使用許諾 |
+| NVIDIA cuBLAS（nvidia-cublas-cu12）/ cuDNN（CTranslate2 に同梱） | GPU での計算 | NVIDIA のソフトウェア使用許諾 |
 
 ## 開発に参加する
 
-不具合の報告や要望は [Issues](https://github.com/AkiraMatsumoto-github/kotoba-desktop/issues) へどうぞ。開発の進め方は [開発者向けガイド](docs/development.md)、仕組みは [設計書](docs/design.md)、進捗は [開発計画](docs/plan.md) を参照してください。
+ソースコードから動かす方法は [開発者向けガイド](docs/development.md) にあります。不具合の報告や要望は [Issues](https://github.com/AkiraMatsumoto-github/kotoba-desktop/issues) へどうぞ。開発の進め方は [開発者向けガイド](docs/development.md)、仕組みは [設計書](docs/design.md)、進捗は [開発計画](docs/plan.md) を参照してください。

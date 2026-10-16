@@ -42,6 +42,25 @@ GitHub Actions（`.github/workflows/ci.yml`）では、GPU なしで lint・型�
 | `tools/poc/receiver.html` | Chrome 用の受信ページ |
 | `tools/poc/focus_watch.py` | 前面ウィンドウの変化を記録する（ウィジェットがフォーカスを奪わないかの確認） |
 
+## 配布用のビルドとリリース
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1              # アプリとインストーラー
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1 -SkipInstaller  # アプリだけ
+```
+
+- PyInstaller で `dist\kotoba-desktop\`（フォルダごと動くアプリ）を作り、Inno Setup 6 で `dist\kotoba-desktop-<版>-setup.exe` にまとめる。Inno Setup は `winget install JRSoftware.InnoSetup` で入れる。
+- ビルド用の仮想環境は `build\.venv` に分ける。開発用の `.venv` から起動中のアプリがあっても、そのままビルドできる。
+- 固めたアプリは開発版と同じ設定（`%APPDATA%\kotoba-desktop`）を使い、二重起動の防止も共通なので、試すときは開発版を終了しておく。
+- アイコン（`packaging/kotoba-desktop.ico`）はトレイのアイコンと同じ絵。変えたら `uv run python packaging/make_icon.py packaging/kotoba-desktop.ico` で作り直す。
+
+リリースは、`pyproject.toml` の `version` を上げてコミットし、同じ版のタグを push する。GitHub Actions（`.github/workflows/release.yml`）がインストーラーを作って Release に載せる。
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## 構成
 
 ```text
@@ -61,4 +80,5 @@ src/kotoba_desktop/
   win32/          Win32 API のラッパー（SendInput、クリップボード、ウィンドウ、IME）
   inject/         テキスト欄への入力（プロファイル、貼り付け、打鍵、入力スレッド）
   ui/             ウィジェット（Qt Quick）、トレイアイコン、設定画面
+packaging/        配布用のビルド（PyInstaller の設定、インストーラー、アイコン）
 ```
