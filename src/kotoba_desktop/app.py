@@ -1,8 +1,7 @@
-"""部品を組み立て、設定の再読み込みや終了を受け持つ。"""
+"""部品を組み立て、設定の反映や終了を受け持つ。"""
 
 import logging
 import os
-import subprocess
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QTimer
@@ -17,6 +16,7 @@ from kotoba_desktop.hotkey import HotkeyError, HotkeyListener
 from kotoba_desktop.inject.injector import Injector
 from kotoba_desktop.recognizer import Recognizer
 from kotoba_desktop.state import State as AppState
+from kotoba_desktop.ui.settings import SettingsDialog
 from kotoba_desktop.ui.tray import Tray
 from kotoba_desktop.ui.widget import Widget
 from kotoba_desktop.win32 import window
@@ -83,10 +83,9 @@ class App(QObject):
             lambda: self._last_target,
         )
 
-        self.widget.settingsRequested.connect(self.open_settings)
+        self.widget.settingsRequested.connect(self.open_settings_dialog)
         self.widget.helpRequested.connect(self.show_help)
-        self.tray.openSettingsRequested.connect(self.open_settings)
-        self.tray.reloadRequested.connect(self.reload)
+        self.tray.settingsDialogRequested.connect(self.open_settings_dialog)
         self.tray.quitRequested.connect(self.quit)
         self.tray.showWidgetRequested.connect(self.widget.show)
         self.tray.alwaysShowToggled.connect(self.set_always_show)
@@ -95,6 +94,7 @@ class App(QObject):
         if startup_error:
             self.tray.show_message(TITLE, startup_error)
         self.hotkey: HotkeyListener | None = None
+        self._settings: SettingsDialog | None = None
         self._register_hotkey(self.config)
         if self.config.audio.keep_open:
             self._open_mic()
@@ -152,11 +152,52 @@ class App(QObject):
 
     # --- メニューとウィジェットから ---
 
-    def open_settings(self) -> None:
+    def open_settings_dialog(self) -> None:
+        if self._settings is not None:
+            self._settings.raise_()
+            self._settings.activateWindow()
+            return
+        # キーを押して選ぶ間は今のホットキーを外す（外さないと押した瞬間に録音が始まる）
+        if self.hotkey:
+            self.hotkey.stop()
+            self.hotkey = None
         try:
-            os.startfile(self.config_path)  # type: ignore[attr-defined]
-        except OSError:
-            subprocess.Popen(["notepad.exe", str(self.config_path)])
+            devices = input_devices()
+        except Exception:
+            log.warning("マイクの一覧を取得できません", exc_info=True)
+            devices = []
+        self._settings = SettingsDialog(self.config, devices, self.apply_config)
+        self._settings.finished.connect(self._on_settings_closed)
+        self._settings.show()
+        self._settings.raise_()
+        self._settings.activateWindow()
+
+    def _on_settings_closed(self) -> None:
+        self._settings = None
+        if self.hotkey is None:  # キャンセルしたときは元のキーに戻す
+            self._register_hotkey(self.config)
+
+    def apply_config(self, new: Config) -> str:
+        """設定を反映して保存する。反映できなければエラーメッセージを返す（設定はそのまま）。"""
+        chord = new.hotkey.chord
+        if self.hotkey is None or chord != self.hotkey.chord:
+            listener = HotkeyListener(chord, self.controller.post_toggle)
+            try:
+                listener.start()
+            except HotkeyError:
+                return f"{chord.display} は Windows か他のアプリが使っているため登録できません"
+            if self.hotkey:
+                self.hotkey.stop()
+            self.hotkey = listener
+            self.controller.set_hotkey_text(chord.display)
+        self._apply_audio(new)  # self.config もここで新しい設定になる
+        self.widget.set_always_show(new.widget.always_show)
+        self.tray.set_always_show(new.widget.always_show)
+        try:
+            config.save(new, self.config_path)
+        except (OSError, ConfigError) as e:
+            self.tray.show_message(TITLE, f"設定を保存できません（今回の起動中だけ有効です）: {e}")
+        return ""
 
     def show_help(self) -> None:
         self.controller.show_message(
@@ -165,22 +206,12 @@ class App(QObject):
         )
 
     def set_always_show(self, value: bool) -> None:
-        if self._write_value("widget", "always_show", value):
-            self.config.widget.always_show = value
-        self.widget.set_always_show(value)
+        widget = self.config.widget.model_copy(update={"always_show": value})
+        self.apply_config(self.config.model_copy(update={"widget": widget}))
 
     def set_device(self, name: str) -> None:
-        if self._write_value("audio", "device", name):
-            audio = self.config.audio.model_copy(update={"device": name})
-            self._apply_audio(self.config.model_copy(update={"audio": audio}))
-
-    def _write_value(self, section: str, key: str, value: str | bool) -> bool:
-        try:
-            config.update_value(self.config_path, section, key, value)
-        except (OSError, ConfigError) as e:
-            self.tray.show_message(TITLE, f"設定ファイルに保存できません: {e}")
-            return False
-        return True
+        audio = self.config.audio.model_copy(update={"device": name})
+        self.apply_config(self.config.model_copy(update={"audio": audio}))
 
     def _apply_audio(self, new: Config) -> None:
         """マイクの設定を反映する。録音中なら次の録音から。"""
@@ -195,24 +226,6 @@ class App(QObject):
         self.recorder.keep_open = new.audio.keep_open
         if new.audio.keep_open:
             self._open_mic()
-
-    def reload(self) -> None:
-        try:
-            new = config.load(self.config_path)
-        except ConfigError as e:
-            self.tray.show_message(TITLE, f"{e}\n前の設定のまま動作します")
-            return
-        old = self.config
-        if new.hotkey.chord != old.hotkey.chord and not self._register_hotkey(new):
-            new = new.model_copy(update={"hotkey": old.hotkey})
-        self._apply_audio(new)
-        self.widget.set_always_show(new.widget.always_show)
-        self.tray.set_always_show(new.widget.always_show)
-        message = "設定を再読み込みしました"
-        if new.asr != old.asr:
-            message += "。[asr] の変更は再起動後に反映されます"
-        self.controller.show_message(message)
-        self.widget.show()
 
     def quit(self) -> None:
         if self.hotkey:

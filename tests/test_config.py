@@ -6,10 +6,6 @@ from kotoba_desktop import config
 from kotoba_desktop.config import ConfigError
 
 
-def test_default_toml_matches_defaults() -> None:
-    assert config.parse(config.DEFAULT_TOML) == config.Config()
-
-
 def test_defaults() -> None:
     cfg = config.parse("")
     assert str(cfg.hotkey.chord) == "ctrl+h"
@@ -20,8 +16,8 @@ def test_defaults() -> None:
 def test_load_creates_default_file(tmp_path: Path) -> None:
     path = tmp_path / "sub" / "config.toml"
     cfg = config.load(path)
-    assert path.read_text(encoding="utf-8") == config.DEFAULT_TOML
     assert cfg == config.Config()
+    assert path.read_text(encoding="utf-8").startswith("# kotoba-desktop の設定")
 
 
 def test_error_names_the_field() -> None:
@@ -36,15 +32,19 @@ def test_unknown_key_is_error() -> None:
     assert "audio.devise" in str(e.value)
 
 
-def test_win_hotkey_rejected() -> None:
-    with pytest.raises(ConfigError, match="Win"):
-        config.parse('[hotkey]\nkey = "h"\nmodifiers = ["win"]\n')
+@pytest.mark.parametrize(
+    ("key", "modifiers", "display"),
+    [("h", '["win", "alt"]', "Win+Alt+H"), ("space", '["alt"]', "Alt+Space"), ("f9", "[]", "F9")],
+)
+def test_win_and_alt_combinations_allowed(key: str, modifiers: str, display: str) -> None:
+    cfg = config.parse(f'[hotkey]\nkey = "{key}"\nmodifiers = {modifiers}\n')
+    assert cfg.hotkey.chord.display == display
 
 
-def test_alt_without_ctrl_rejected() -> None:
-    with pytest.raises(ConfigError, match="Alt"):
-        config.parse('[hotkey]\nkey = "space"\nmodifiers = ["alt"]\n')
-    config.parse('[hotkey]\nkey = "space"\nmodifiers = ["ctrl", "alt"]\n')
+@pytest.mark.parametrize(("key", "modifiers"), [("a", "[]"), ("space", "[]"), ("1", '["shift"]')])
+def test_typing_keys_alone_rejected(key: str, modifiers: str) -> None:
+    with pytest.raises(ConfigError, match="普段の入力"):
+        config.parse(f'[hotkey]\nkey = "{key}"\nmodifiers = {modifiers}\n')
 
 
 def test_profile_needs_match() -> None:
@@ -57,26 +57,26 @@ def test_broken_toml() -> None:
         config.parse("[hotkey")
 
 
-def test_update_value_keeps_comments(tmp_path: Path) -> None:
+def test_save_roundtrip_with_tricky_values(tmp_path: Path) -> None:
+    cfg = config.Config.model_validate(
+        {
+            "hotkey": {"key": "h", "modifiers": ["win", "alt"]},
+            "audio": {"device": 'マイク "C960"', "keep_open": True},
+            "text": {
+                "punctuation": "strip",
+                "replace": {'クロード "コード"': "a\\b", "改\n行": "", "タブ\t": "x"},
+            },
+            "inject": {"profile": []},
+        }
+    )
+    path = tmp_path / "sub" / "config.toml"
+    config.save(cfg, path)
+    assert config.load(path) == cfg
+
+
+def test_save_keeps_profiles(tmp_path: Path) -> None:
     path = tmp_path / "config.toml"
-    path.write_text(config.DEFAULT_TOML, encoding="utf-8")
-    config.update_value(path, "audio", "device", 'マイク "C960"')
-    config.update_value(path, "widget", "always_show", True)
+    config.save(config.Config(), path)
     text = path.read_text(encoding="utf-8")
-    assert 'device = "マイク \\"C960\\""               # 空 = OS の既定マイク' in text
-    assert "always_show = true" in text
-    cfg = config.load(path)
-    assert cfg.audio.device == 'マイク "C960"'
-    assert cfg.widget.always_show is True
-    # 他のセクションの同名キーは書き換えない
-    assert 'model = "kotoba-tech/kotoba-whisper-v2.0-faster"' in text
-
-
-def test_update_value_adds_missing_section_and_key(tmp_path: Path) -> None:
-    path = tmp_path / "config.toml"
-    path.write_text('[audio]\nmin_speech_ms = 200\n[hotkey]\nkey = "j"\n', encoding="utf-8")
-    config.update_value(path, "audio", "device", "USB")
-    config.update_value(path, "widget", "always_show", False)
-    cfg = config.load(path)
-    assert (cfg.audio.device, cfg.audio.min_speech_ms, cfg.hotkey.key) == ("USB", 200, "j")
-    assert cfg.widget.always_show is False
+    assert "[[inject.profile]]" in text
+    assert config.load(path).inject.profile == config.Config().inject.profile

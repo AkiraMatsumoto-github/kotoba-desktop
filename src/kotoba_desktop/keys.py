@@ -5,12 +5,12 @@
 
 from dataclasses import dataclass
 
-# 修飾キー名 → 仮想キーコード（送信用は左側のキーを使う）
+# 修飾キー名 → 仮想キーコード（送信用は左側のキーを使う）。並びは表記の順（Win+Ctrl+Alt+Shift）
 MODIFIER_VK = {
-    "ctrl": 0x11,  # VK_CONTROL
-    "shift": 0x10,  # VK_SHIFT
-    "alt": 0x12,  # VK_MENU
     "win": 0x5B,  # VK_LWIN
+    "ctrl": 0x11,  # VK_CONTROL
+    "alt": 0x12,  # VK_MENU
+    "shift": 0x10,  # VK_SHIFT
 }
 
 # RegisterHotKey の修飾フラグ
@@ -45,6 +45,24 @@ _NAMED_VK |= {f"f{n}": 0x6F + n for n in range(1, 25)}  # VK_F1 = 0x70
 
 _ALIASES = {"control": "ctrl", "menu": "alt", "return": "enter", "escape": "esc", "ins": "insert"}
 
+_VK_NAME = {vk: name for name, vk in _NAMED_VK.items()}
+
+# 単独（または Shift だけと組み合わせて）ホットキーにすると、普段の文字入力や操作ができなくなるキー
+TYPING_KEYS = frozenset(
+    {
+        *(chr(c) for c in range(ord("a"), ord("z") + 1)),
+        *(chr(c) for c in range(ord("0"), ord("9") + 1)),
+        "space", "enter", "tab", "backspace", "esc", "delete", "insert",
+        "left", "right", "up", "down", "home", "end", "pageup", "pagedown",
+    }
+)  # fmt: skip
+
+
+def key_name(vk: int) -> str | None:
+    """仮想キーコードからキー名（"h"、"f5" など）。対応していないキーは None。"""
+    return _VK_NAME.get(vk)
+
+
 # 拡張キー（KEYEVENTF_EXTENDEDKEY が必要）。付けないとテンキー側のキーとして扱われる
 EXTENDED_VK = frozenset(
     {0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x5B, 0x5C, 0x5D}
@@ -55,7 +73,7 @@ EXTENDED_VK = frozenset(
 class Chord:
     """修飾キーと 1 つの主キーの組み合わせ。"""
 
-    modifiers: tuple[str, ...]  # MODIFIER_VK のキー名。並びは ctrl, shift, alt, win の順
+    modifiers: tuple[str, ...]  # MODIFIER_VK のキー名。並びは win, ctrl, alt, shift の順
     vk: int
     text: str  # 正規化した表記（例: "ctrl+h"）
 

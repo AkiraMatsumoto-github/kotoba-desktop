@@ -118,6 +118,19 @@ def _pairs(units: list[int]) -> list[INPUT]:
     return inputs
 
 
+# どのアプリにも割り当てのない仮想キー（AutoHotkey の MenuMaskKey と同じ）
+VK_MASK = 0xE8
+
+
+def send_mask_key() -> None:
+    """意味のないキーを 1 回押して離す。
+
+    Win や Alt を押して離すまでの間に他のキーが挟まらないと、スタートメニューやメニューバーが開く。
+    ホットキーの主キーは RegisterHotKey が飲み込むので、代わりにこれを挟む。
+    """
+    _send([_vk_input(VK_MASK, False), _vk_input(VK_MASK, True)])
+
+
 def modifiers_pressed() -> bool:
     """Ctrl / Alt / Shift / Win のどれかが物理的に押されているか。"""
     return any(user32.GetAsyncKeyState(vk) & 0x8000 for vk in _MODIFIER_STATE_VK)

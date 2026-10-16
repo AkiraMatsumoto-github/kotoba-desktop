@@ -1,14 +1,14 @@
 """設定ファイル（TOML）の読み込みと pydantic による検証。"""
 
+import json
 import os
-import re
 import tomllib
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from kotoba_desktop.keys import Chord, parse_chord
+from kotoba_desktop.keys import TYPING_KEYS, Chord, key_name, parse_chord
 
 
 def app_dir() -> Path:
@@ -37,12 +37,12 @@ class HotkeyConfig(_Section):
     @model_validator(mode="after")
     def _valid_chord(self) -> HotkeyConfig:
         chord = self.chord
-        if "win" in chord.modifiers:
-            raise ValueError("Win キーの組み合わせは OS 用なので使えません")
-        if "alt" in chord.modifiers and "ctrl" not in chord.modifiers:
-            # 主キーだけが飲み込まれ、入力先に Alt の押下と解放が届いてメニューバーが開く
+        # Win や Alt を含む組み合わせも使える。押したときにスタートメニューやメニューバーが
+        # 開かないよう、hotkey.py がダミーのキーを送る。Win+H など OS が使うキーは登録時に失敗する
+        if chord.modifiers in ((), ("shift",)) and key_name(chord.vk) in TYPING_KEYS:
             raise ValueError(
-                "Alt を使うときは Ctrl と組み合わせてください（メニューバーが開くため）"
+                f"{chord.display} だけでは普段の入力ができなくなります。"
+                "Ctrl などと組み合わせてください"
             )
         if not chord.modifiers and chord.vk == 0x7B:
             raise ValueError("F12 は OS 予約なので使えません")
@@ -140,50 +140,6 @@ class ConfigError(Exception):
     """設定ファイルの誤り。メッセージはそのまま通知に出せる形にする。"""
 
 
-DEFAULT_TOML = """\
-# kotoba-desktop の設定。保存後、トレイの「再読み込み」で反映される。
-
-[hotkey]
-key = "h"                 # Ctrl+H（押すたびに録音の開始 / 終了）
-modifiers = ["ctrl"]      # ctrl / shift / alt
-
-[audio]
-device = ""               # 空 = OS の既定マイク。名前の一部で指定できる
-keep_open = false         # 話し始めが欠けるなら true（開いたままにし、押す直前 0.3 秒も録る）
-min_speech_ms = 300       # これより短い発話は認識しない
-max_chunk_s = 15          # 長い発話はこの秒数以内に区切って認識する
-
-[asr]
-model = "kotoba-tech/kotoba-whisper-v2.0-faster"
-compute_type = "float16"
-beam_size = 1
-hotwords = ""             # 認識させたい語を空白区切りで（例: "Claude Code Cursor WSL"）
-
-[inject]
-method = "paste"          # paste（貼り付け）| type（1 文字ずつ打鍵）
-paste_key = "ctrl+v"
-restore_delay_ms = 300    # 貼り付け後、元のクリップボードを戻すまでの待ち時間
-
-[[inject.profile]]
-match_process = "WindowsTerminal.exe"
-paste_key = "shift+insert"
-
-[[inject.profile]]
-match_class = "ConsoleWindowClass"
-paste_key = "shift+insert"
-
-[text]
-punctuation = "keep"      # keep（モデル出力のまま）| strip（「、。」を除去）
-drop_phrases = ["ご視聴ありがとうございました", "チャンネル登録お願いします"]
-
-[text.replace]
-# "クロードコード" = "Claude Code"
-
-[widget]
-always_show = false
-"""
-
-
 def _format_errors(err: ValidationError) -> str:
     lines = []
     for e in err.errors():
@@ -206,49 +162,57 @@ def parse(text: str) -> Config:
 
 
 def load(path: Path | None = None) -> Config:
-    """設定ファイルを読む。無ければ既定値のファイルを作ってから読む。"""
+    """設定ファイルを読む。無ければ既定値で作ってから読む。"""
     path = path or config_path()
     if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(DEFAULT_TOML, encoding="utf-8")
+        save(Config(), path)
     return parse(path.read_text(encoding="utf-8"))
 
 
-def _toml_value(value: str | bool) -> str:
+_HEADER = """# kotoba-desktop の設定。
+# よく変える項目はトレイの「設定…」で変えられる。設定画面に無い項目だけ、ここを直接編集する
+# （編集後はアプリを再起動する）。
+"""
+
+
+def _value(value: object) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    if isinstance(value, int | float):
+        return repr(value)
+    if isinstance(value, str):
+        # JSON の文字列のエスケープは TOML の基本文字列としてもそのまま使える
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, list):
+        return "[" + ", ".join(_value(v) for v in value) + "]"
+    raise TypeError(f"TOML にできない値です: {value!r}")
 
 
-def update_value(path: Path, section: str, key: str, value: str | bool) -> None:
-    """設定ファイルの [section] の key だけを書き換える。コメントや他の行はそのまま残す。
+def to_toml(cfg: Config) -> str:
+    """Config を TOML の文字列にする。"""
+    lines = [_HEADER]
+    for section, data in cfg.model_dump(exclude_none=True).items():
+        tables: list[str] = []
+        lines.append(f"[{section}]")
+        for key, value in data.items():
+            if isinstance(value, dict):  # [text.replace] のような表
+                tables += ["", f"[{section}.{key}]"]
+                tables += [f"{_value(k)} = {_value(v)}" for k, v in value.items()]
+            elif isinstance(value, list) and value and isinstance(value[0], dict):
+                for item in value:  # [[inject.profile]] のような表の配列
+                    tables += ["", f"[[{section}.{key}]]"]
+                    tables += [f"{k} = {_value(v)}" for k, v in item.items()]
+            else:
+                lines.append(f"{key} = {_value(value)}")
+        lines += [*tables, ""]
+    return "\n".join(lines)
 
-    トレイのメニュー（マイク選択、ウィジェットを常に表示）から使う。
-    """
-    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    literal = _toml_value(value)
-    header = re.compile(rf"^\s*\[\s*{re.escape(section)}\s*\]\s*(#.*)?$")
-    any_header = re.compile(r"^\s*\[")
-    # 値は "..."（中の \" や \\ を含む）、'...'（リテラル文字列）、
-    # 空白と # を含まない語（true、300 など）のどれか
-    value_pattern = r""""(?:[^"\\]|\\.)*"|'[^']*'|[^#\s]+"""
-    entry = re.compile(rf"^(\s*{re.escape(key)}\s*=\s*)({value_pattern})(.*)$", re.S)
 
-    start = next((i for i, line in enumerate(lines) if header.match(line)), None)
-    if start is None:
-        if lines and not lines[-1].endswith("\n"):
-            lines[-1] += "\n"
-        lines += ["\n", f"[{section}]\n", f"{key} = {literal}\n"]
-    else:
-        end = next(
-            (i for i in range(start + 1, len(lines)) if any_header.match(lines[i])), len(lines)
-        )
-        for i in range(start + 1, end):
-            if m := entry.match(lines[i]):
-                lines[i] = m.group(1) + literal + m.group(3)
-                break
-        else:
-            lines.insert(start + 1, f"{key} = {literal}\n")
-    text = "".join(lines)
-    parse(text)  # 壊れた設定を書き込まない
+def save(cfg: Config, path: Path | None = None) -> None:
+    """設定ファイルに書き出す。読み戻して同じ内容になることを確かめてから書く。"""
+    path = path or config_path()
+    text = to_toml(cfg)
+    if parse(text) != cfg:
+        raise ConfigError("設定を正しく書き出せませんでした")
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")

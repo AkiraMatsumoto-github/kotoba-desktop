@@ -46,8 +46,7 @@ def make_icon(color: str) -> QIcon:
 
 
 class Tray(QObject):
-    openSettingsRequested = Signal()
-    reloadRequested = Signal()
+    settingsDialogRequested = Signal()
     quitRequested = Signal()
     showWidgetRequested = Signal()
     alwaysShowToggled = Signal(bool)
@@ -77,8 +76,7 @@ class Tray(QObject):
         self._always_show.setChecked(always_show)
         self._always_show.toggled.connect(self.alwaysShowToggled)
         self._menu.addSeparator()
-        self._menu.addAction("設定を開く").triggered.connect(self.openSettingsRequested)
-        self._menu.addAction("設定を再読み込み").triggered.connect(self.reloadRequested)
+        self._menu.addAction("設定…").triggered.connect(self.settingsDialogRequested)
         self._menu.addSeparator()
         self._menu.addAction("終了").triggered.connect(self.quitRequested)
 
