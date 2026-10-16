@@ -7,7 +7,7 @@ WS_EX_NOACTIVATE を直接付け、表示するときもアクティブにしな
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QPoint, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, QPoint, QTimer, Slot
 from PySide6.QtGui import QGuiApplication, QScreen, QWindow
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -32,9 +32,6 @@ POS_KEY = "widget_pos_px"  # 左上の物理座標
 
 
 class Widget(QObject):
-    settingsRequested = Signal()
-    helpRequested = Signal()
-
     def __init__(self, controller: Controller, app_state: AppState, always_show: bool) -> None:
         super().__init__()
         self._controller = controller
@@ -143,14 +140,6 @@ class Widget(QObject):
     def close(self) -> None:
         self._controller.cancel()
         self.hide()
-
-    @Slot()
-    def openSettings(self) -> None:
-        self.settingsRequested.emit()
-
-    @Slot()
-    def showHelp(self) -> None:
-        self.helpRequested.emit()
 
     # ドラッグは物理座標で Windows に直接動かさせる（move_window の説明を参照）
 

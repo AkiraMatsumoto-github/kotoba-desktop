@@ -83,8 +83,6 @@ class App(QObject):
             lambda: self._last_target,
         )
 
-        self.widget.settingsRequested.connect(self.open_settings_dialog)
-        self.widget.helpRequested.connect(self.show_help)
         self.tray.settingsDialogRequested.connect(self.open_settings_dialog)
         self.tray.quitRequested.connect(self.quit)
         self.tray.showWidgetRequested.connect(self.widget.show)
@@ -198,12 +196,6 @@ class App(QObject):
         except (OSError, ConfigError) as e:
             self.tray.show_message(TITLE, f"設定を保存できません（今回の起動中だけ有効です）: {e}")
         return ""
-
-    def show_help(self) -> None:
-        self.controller.show_message(
-            f"{self.controller.hotkeyText} かマイクで開始 / 終了。閉じるボタンで録音を破棄",
-            timeout_ms=5000,
-        )
 
     def set_always_show(self, value: bool) -> None:
         widget = self.config.widget.model_copy(update={"always_show": value})

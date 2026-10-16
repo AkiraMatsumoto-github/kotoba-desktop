@@ -1,12 +1,12 @@
-// Windows 標準の音声入力（Win+H）に似た小さなパネル。
-// 左から設定・マイク・ヘルプ、右上が閉じる。上に状態を示す吹き出しを置く。
-// controller（状態・吹き出し・音量）と widget（ボタン操作・位置の保存）は Python から渡される。
+// 横長のカプセル形のバー。左にマイクボタン、中央に波形、右に閉じるボタン、上に状態を示す吹き出しを置く。
+// 設定とヘルプはトレイのメニューから開く。
+// controller（状態・吹き出し・音量）と widget（ボタン操作・ドラッグ）は Python から渡される。
 import QtQuick
 
 Window {
     id: root
-    width: 280
-    height: 178  // パネルの下にツールチップの分の余白を取る
+    width: 300
+    height: 140  // 吹き出しとツールチップの分の余白を取る
     color: "transparent"
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
 
@@ -50,11 +50,11 @@ Window {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 28
         anchors.horizontalCenter: parent.horizontalCenter
-        width: 240
-        height: 84
-        radius: 12
+        width: 260
+        height: 52
+        radius: height / 2
         color: root.panelColor
-        border.color: "#30ffffff"
+        border.color: controller.error ? root.errorColor : (root.recording ? "#804cc2ff" : "#30ffffff")
         border.width: 1
 
         // root.x / root.y で動かすと DPI の違うモニターをまたいだときに縮むので、移動は Python 側で行う
@@ -66,86 +66,36 @@ Window {
             onCanceled: widget.dragFinished()
         }
 
-        IconButton {
-            anchors.left: parent.left
-            anchors.leftMargin: 18
-            anchors.verticalCenter: parent.verticalCenter
-            glyph: ""  // 設定
-            tip: "設定"
-            onClicked: widget.openSettings()
-        }
-
-        IconButton {
-            anchors.right: parent.right
-            anchors.rightMargin: 18
-            anchors.verticalCenter: parent.verticalCenter
-            glyph: ""  // ヘルプ
-            tip: "ヘルプ"
-            onClicked: widget.showHelp()
-        }
-
-        IconButton {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 4
-            size: 22
-            glyph: ""  // 閉じる
-            glyphSize: 9
-            tip: "閉じる"
-            onClicked: widget.close()
-        }
-
-        // マイクボタン
+        // マイクボタン。録音中は停止ボタンになる
         Rectangle {
             id: mic
-            anchors.centerIn: parent
-            width: 56
-            height: 56
-            radius: 28
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.verticalCenter: parent.verticalCenter
+            width: 40
+            height: 40
+            radius: 20
             color: root.recording || root.busy ? root.accent : (micArea.containsMouse ? "#20ffffff" : "transparent")
             border.width: 2
             border.color: controller.error ? root.errorColor : (root.unavailable ? "#60ffffff" : root.accent)
+            Behavior on color { ColorAnimation { duration: 120 } }
 
             Text {
                 anchors.centerIn: parent
-                visible: !root.recording && !root.busy
+                visible: !root.recording
                 text: ""  // マイク
                 font.family: root.iconFont
-                font.pixelSize: 22
-                color: root.unavailable ? "#80ffffff" : "white"
+                font.pixelSize: 17
+                color: root.busy ? "#1b1b1b" : (root.unavailable ? "#80ffffff" : "white")
             }
 
-            // 録音中: 音量に合わせて点が伸びる。認識中: 点が回る
-            Item {
-                id: dots
+            Rectangle {
                 anchors.centerIn: parent
-                width: 30
-                height: 30
-                visible: root.recording || root.busy
-
-                Repeater {
-                    model: 3
-                    Rectangle {
-                        required property int index
-                        readonly property real gain: [0.7, 1.0, 0.7][index]
-                        width: 6
-                        radius: 3
-                        color: "#1b1b1b"
-                        x: root.busy ? 12 + 9 * Math.cos(index * 2 * Math.PI / 3) : 3 + index * 9
-                        height: root.busy ? 6 : 6 + 18 * Math.min(1, controller.level * gain)
-                        y: root.busy ? 12 + 9 * Math.sin(index * 2 * Math.PI / 3) : (30 - height) / 2
-                        Behavior on height { NumberAnimation { duration: 60 } }
-                    }
-                }
-
-                RotationAnimator on rotation {
-                    running: root.busy
-                    from: 0
-                    to: 360
-                    duration: 900
-                    loops: Animation.Infinite
-                }
-                onVisibleChanged: if (!root.busy) rotation = 0
+                visible: root.recording
+                width: 12
+                height: 12
+                radius: 3
+                color: "#1b1b1b"
             }
 
             MouseArea {
@@ -160,14 +110,108 @@ Window {
                 text: (root.recording ? "停止" : "開始") + "（" + controller.hotkeyText + "）"
             }
         }
+
+        // 中央。待機中は案内、録音中は音量の波形、認識中は流れる波
+        Item {
+            id: center
+            anchors.left: mic.right
+            anchors.leftMargin: 12
+            anchors.right: closeButton.left
+            anchors.rightMargin: 8
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !root.recording && !root.busy && !root.unavailable
+                text: controller.hotkeyText + " かクリックで話す"
+                color: "#a0ffffff"
+                font.pixelSize: 12
+                elide: Text.ElideRight
+                width: parent.width
+            }
+
+            Item {
+                id: wave
+                anchors.fill: parent
+                anchors.topMargin: 12
+                anchors.bottomMargin: 12
+                visible: root.recording || root.busy
+
+                readonly property int barWidth: 3
+                readonly property int gap: 3
+                readonly property int count: Math.max(1, Math.floor((width + gap) / (barWidth + gap)))
+                property var levels: []  // 古い順。右端が最新
+                property real phase: 0
+
+                function reset() {
+                    levels = new Array(count).fill(0)
+                }
+                Component.onCompleted: reset()
+                onCountChanged: reset()
+                onVisibleChanged: if (visible) reset()
+
+                // 音量が変わらない間も波形を流すため、一定間隔で取り込む
+                Timer {
+                    interval: 40
+                    repeat: true
+                    running: root.recording
+                    onTriggered: {
+                        const next = wave.levels.slice(1)
+                        // 小さい声でも動きが見えるように平方根で持ち上げる
+                        next.push(Math.sqrt(Math.min(1, controller.level)))
+                        wave.levels = next
+                    }
+                }
+
+                NumberAnimation on phase {
+                    running: root.busy
+                    from: 0
+                    to: 2 * Math.PI
+                    duration: 1200
+                    loops: Animation.Infinite
+                }
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: wave.gap
+                    Repeater {
+                        model: wave.count
+                        Rectangle {
+                            required property int index
+                            readonly property real value: root.busy
+                                ? 0.15 + 0.35 * (0.5 + 0.5 * Math.sin(wave.phase * 2 - index * 0.45))
+                                : (wave.levels[index] ?? 0)
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: wave.barWidth
+                            height: Math.max(wave.barWidth, wave.height * value)
+                            radius: width / 2
+                            color: root.busy ? root.accent : "white"
+                            opacity: root.busy ? 0.9 : 0.55 + 0.45 * value
+                            Behavior on height { NumberAnimation { duration: 60 } }
+                        }
+                    }
+                }
+            }
+        }
+
+        IconButton {
+            id: closeButton
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            glyph: ""  // 閉じる
+            tip: "閉じる"
+            onClicked: widget.close()
+        }
     }
 
     component IconButton: Rectangle {
         id: button
         property string glyph
         property string tip
-        property int size: 34
-        property int glyphSize: 15
+        property int size: 28
+        property int glyphSize: 10
         signal clicked
         width: size
         height: size
@@ -197,7 +241,7 @@ Window {
         property alias text: label.text
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.bottom
-        anchors.topMargin: 4
+        anchors.topMargin: 8
         width: label.implicitWidth + 12
         height: label.implicitHeight + 6
         radius: 4
