@@ -133,6 +133,29 @@ class MONITORINFOEXW(ctypes.Structure):
 
 user32.GetMonitorInfoW.argtypes = (wintypes.HMONITOR, ctypes.POINTER(MONITORINFOEXW))
 user32.GetMonitorInfoW.restype = wintypes.BOOL
+user32.MonitorFromPoint.argtypes = (wintypes.POINT, wintypes.DWORD)
+user32.MonitorFromPoint.restype = wintypes.HMONITOR
+user32.GetCursorPos.argtypes = (ctypes.POINTER(wintypes.POINT),)
+user32.GetCursorPos.restype = wintypes.BOOL
+user32.GetWindowRect.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.RECT))
+user32.GetWindowRect.restype = wintypes.BOOL
+user32.SetWindowPos.argtypes = (
+    wintypes.HWND,
+    wintypes.HWND,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    ctypes.c_int,
+    wintypes.UINT,
+)
+user32.SetWindowPos.restype = wintypes.BOOL
+
+HWND_TOPMOST = -1
+SWP_NOSIZE = 0x0001
+SWP_NOMOVE = 0x0002
+SWP_NOZORDER = 0x0004
+SWP_NOACTIVATE = 0x0010
+MONITOR_DEFAULTTONULL = 0
 
 
 def make_no_activate(hwnd: int) -> None:
@@ -144,6 +167,41 @@ def make_no_activate(hwnd: int) -> None:
     user32.SetWindowLongPtrW(
         hwnd, GWL_EXSTYLE, style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST
     )
+
+
+def raise_topmost(hwnd: int) -> None:
+    """最前面の窓の中でも一番手前に出す。WS_EX_TOPMOST を付けるだけでは順番は変わらない。"""
+    user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)
+
+
+# 以下の座標はすべて物理ピクセル。Qt の論理座標は DPI の違うモニターをまたぐと食い違うので、
+# ウィジェットの移動と位置の保存はこちらで行う
+
+
+def cursor_pos() -> tuple[int, int]:
+    p = wintypes.POINT()
+    user32.GetCursorPos(ctypes.byref(p))
+    return p.x, p.y
+
+
+def window_rect(hwnd: int) -> tuple[int, int, int, int]:
+    """(左, 上, 幅, 高さ)。"""
+    r = wintypes.RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(r))
+    return r.left, r.top, r.right - r.left, r.bottom - r.top
+
+
+def move_window(hwnd: int, x: int, y: int) -> None:
+    """左上を (x, y) に動かす。
+
+    Qt の setPosition() だと途中で DPI が変わったときに大きさが物理ピクセルのまま残り、
+    モニターをまたぐたびにウィンドウが縮む。Windows に直接動かさせると DPI に合わせて拡縮される。
+    """
+    user32.SetWindowPos(hwnd, None, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)
+
+
+def on_any_monitor(x: int, y: int) -> bool:
+    return bool(user32.MonitorFromPoint(wintypes.POINT(x, y), MONITOR_DEFAULTTONULL))
 
 
 def foreground_monitor_origin() -> tuple[int, int] | None:

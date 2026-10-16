@@ -57,20 +57,13 @@ Window {
         border.color: "#30ffffff"
         border.width: 1
 
+        // root.x / root.y で動かすと DPI の違うモニターをまたいだときに縮むので、移動は Python 側で行う
         MouseArea {
             anchors.fill: parent
-            property point start
-            property point origin
-            onPressed: (mouse) => {
-                start = mapToGlobal(mouse.x, mouse.y)
-                origin = Qt.point(root.x, root.y)
-            }
-            onPositionChanged: (mouse) => {
-                const p = mapToGlobal(mouse.x, mouse.y)
-                root.x = origin.x + p.x - start.x
-                root.y = origin.y + p.y - start.y
-            }
-            onReleased: widget.savePosition(root.x, root.y)
+            onPressed: widget.dragStarted()
+            onPositionChanged: widget.dragMoved()
+            onReleased: widget.dragFinished()
+            onCanceled: widget.dragFinished()
         }
 
         IconButton {

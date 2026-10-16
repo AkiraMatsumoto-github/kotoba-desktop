@@ -285,6 +285,8 @@ Windows 標準の音声入力と同じく、中央のマイクボタン、左に
 
 実装は PySide6（Qt 6）で、見た目とアニメーションは Qt Quick（QML）で書く。枠なし・半透明・角丸・常に最前面の窓に `Qt.WindowDoesNotAcceptFocus` を指定し、効かなければ ctypes で拡張スタイルを直接付ける。トレイも Qt の QSystemTrayIcon で賄い、pystray と tkinter は使わない。
 
+ドラッグでの移動と位置の保存は、Qt の論理座標ではなく物理座標で行い、`SetWindowPos` で Windows に直接動かさせる。Qt の `setPosition()`（QML の `root.x`）で動かすと、DPI の違うモニターをまたいだときに大きさが物理ピクセルのまま残り、またぐたびにウィンドウが縮んで中身が欠ける（125% と 200% の組み合わせで確認）。また、後から出た最前面の窓（タスクバーなど）の後ろに残らないよう、表示するたびに `HWND_TOPMOST` で手前に出し直す。
+
 ## 9. 技術スタックと開発環境
 
 Python 3.14 を uv で管理して作る（リポジトリ: [AkiraMatsumoto-github/kotoba-desktop](https://github.com/AkiraMatsumoto-github/kotoba-desktop)）。Python 本体・依存・仮想環境・実行・常駐用のインストールまで uv に任せ、venv や pip を手で触らない。音声・GPU・キー入力はどれも Windows 側にあるので、アプリは WSL ではなく Windows で動かす。
