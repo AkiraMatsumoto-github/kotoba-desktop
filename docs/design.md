@@ -201,7 +201,7 @@ Whisper 系は無音や雑音だけの入力に「ご視聴ありがとうござ
 4. 置換辞書を上から順に適用する（単純な文字列置換）。
 5. 句読点: `keep`（モデル出力のまま、既定）/ `strip`（「、。」を除去）/ `add`（punctuators で付与、v1 以降）。プロファイルごとに上書きできる。
 
-### 設定ファイル（`%APPDATA%\kotoba-input\config.toml`）
+### 設定ファイル（`%APPDATA%\kotoba-desktop\config.toml`）
 
 ```toml
 [hotkey]
@@ -277,7 +277,7 @@ Windows 標準の音声入力と同じく、中央のマイクボタン、左に
 
 ## 9. 技術スタックと開発環境
 
-Python 3.14 を uv で管理して作る（リポジトリ: [AkiraMatsumoto-github/kotoba-input](https://github.com/AkiraMatsumoto-github/kotoba-input)）。Python 本体・依存・仮想環境・実行・常駐用のインストールまで uv に任せ、venv や pip を手で触らない。音声・GPU・キー入力はどれも Windows 側にあるので、アプリは WSL ではなく Windows で動かす。
+Python 3.14 を uv で管理して作る（リポジトリ: [AkiraMatsumoto-github/kotoba-desktop](https://github.com/AkiraMatsumoto-github/kotoba-desktop)）。Python 本体・依存・仮想環境・実行・常駐用のインストールまで uv に任せ、venv や pip を手で触らない。音声・GPU・キー入力はどれも Windows 側にあるので、アプリは WSL ではなく Windows で動かす。
 
 | 役割 | 採用 | 備考 |
 | --- | --- | --- |
@@ -302,7 +302,7 @@ Windows 専用アプリなので、`[tool.uv] environments` で依存解決を W
 
 ```toml
 [project]
-name = "kotoba-input"
+name = "kotoba-desktop"
 requires-python = ">=3.14"
 dependencies = [
   "faster-whisper>=1.2",
@@ -317,7 +317,7 @@ dependencies = [
 ]
 
 [project.gui-scripts]
-kotoba-input = "kotoba_input.__main__:main"
+kotoba-desktop = "kotoba_desktop.__main__:main"
 
 [dependency-groups]
 dev = ["ruff", "ty", "pytest", "pytest-qt"]
@@ -332,10 +332,10 @@ build-backend = "uv_build"
 
 | 用途 | コマンド |
 | --- | --- |
-| 初期化 | `uv init --package kotoba-input` → `uv python pin 3.14` |
+| 初期化 | `uv init --package kotoba-desktop` → `uv python pin 3.14` |
 | 依存の追加 | `uv add faster-whisper …` / `uv add --dev ruff ty pytest pytest-qt` |
 | 環境の同期 | `uv sync`（uv.lock どおりに `.venv` を作る） |
-| 開発中の起動 | `uv run kotoba-input` |
+| 開発中の起動 | `uv run kotoba-desktop` |
 | 検査 | `uv run ruff check` / `uv run ruff format` / `uv run ty check` / `uv run pytest` |
 | モデル取得 | `uv run hf download kotoba-tech/kotoba-whisper-v2.0-faster` |
 | 依存の更新 | `uv lock --upgrade` → `uv sync` |
@@ -344,11 +344,11 @@ build-backend = "uv_build"
 ### リポジトリ構成（案）
 
 ```text
-kotoba-input/
+kotoba-desktop/
   pyproject.toml
   uv.lock
   .python-version          # 3.14
-  src/kotoba_input/
+  src/kotoba_desktop/
     __main__.py            # 起動、二重起動の防止
     controller.py          # 状態遷移の中心
     hotkey.py              # RegisterHotKey の登録と待ち受け
@@ -365,14 +365,14 @@ kotoba-input/
 
 ### WSL からの開発方法
 
-- コードは Windows 側のファイルシステムに置く（例: `C:\Users\yahoo\dev\kotoba-input`）。uv が作る `.venv` は Windows 用なので、WSL 内に置くと遅く壊れやすい。
+- コードは Windows 側のファイルシステムに置く（例: `C:\Users\yahoo\dev\kotoba-desktop`）。uv が作る `.venv` は Windows 用なので、WSL 内に置くと遅く壊れやすい。
 - 編集は Cursor を Windows モード（WSL 接続なし）で開くのが素直。WSL の Claude Code から作業する場合は `/mnt/c/...` を編集し、実行は `uv.exe run ...` を Windows 相互運用で呼ぶ。
 - WSL 側の uv で同じ `.venv` を触らない（Linux 用と Windows 用で中身が違う）。`uv sync` と `uv run` は常に `uv.exe` で実行する。
 - 後処理・プロファイル判定・キー列生成は単体テスト。SendInput とクリップボードは Windows 上の結合テスト（第 10 章）。
 
 ### 自動起動と配布
 
-- `uv tool install --editable .` で常駐用の `kotoba-input.exe`（コンソール窓なし）を `%USERPROFILE%\.local\bin` に作り、スタートアップフォルダにショートカットを置く。editable なのでコードを直したら再起動だけで反映される。
+- `uv tool install --editable .` で常駐用の `kotoba-desktop.exe`（コンソール窓なし）を `%USERPROFILE%\.local\bin` に作り、スタートアップフォルダにショートカットを置く。editable なのでコードを直したら再起動だけで反映される。
 - 二重起動は名前付きミューテックスで防ぐ。
 - モデルは初回だけ取得し、以降は `HF_HUB_OFFLINE=1` でネットワークに触れない。
 - exe 単体での配布（PyInstaller / Nuitka）は必要になってから検討する。

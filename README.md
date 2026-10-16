@@ -1,4 +1,4 @@
-# kotoba-input
+# kotoba-desktop
 
 Windows に常駐する日本語の音声入力アプリです。ショートカットキーで録音を開始し、もう一度押して終了すると、話した内容を [kotoba-whisper](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-faster) で GPU 認識し、フォーカス中のテキスト欄へまとめて入力します。
 
@@ -35,7 +35,7 @@ uv run pytest
 ## 構成
 
 ```text
-src/kotoba_input/
+src/kotoba_desktop/
   __main__.py     エントリポイント
   controller.py   状態遷移（待機 → 録音中 → 認識中 → 入力中）
   hotkey.py       ショートカットキーの登録と待ち受け

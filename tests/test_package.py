@@ -1,5 +1,5 @@
-import kotoba_input
+import kotoba_desktop
 
 
 def test_package_imports() -> None:
-    assert kotoba_input.__name__ == "kotoba_input"
+    assert kotoba_desktop.__name__ == "kotoba_desktop"

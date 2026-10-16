@@ -1,4 +1,4 @@
-"""kotoba-input のエントリポイント。"""
+"""kotoba-desktop のエントリポイント。"""
 
 
 def main() -> None:
