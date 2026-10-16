@@ -16,3 +16,7 @@ wheels/
 # ログ・デバッグ用の録音
 *.log
 *.wav
+
+# Phase 0 の検証で生成するファイル
+tools/poc/samples/
+tools/poc/out/

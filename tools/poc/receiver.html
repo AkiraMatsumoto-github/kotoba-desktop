@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>inject_check 受信</title>
+<style>
+  body { font-family: "Yu Gothic UI", sans-serif; margin: 16px; }
+  textarea { width: 100%; height: 70vh; font-size: 14px; }
+</style>
+</head>
+<body>
+<p>テキスト欄をクリックしてから <code>inject_check.py send</code> を実行し、終わったら「保存」を押す（received.txt としてダウンロードされる）。</p>
+<textarea id="t" autofocus></textarea>
+<p><button id="save">保存</button> <span id="count"></span></p>
+<script>
+  const t = document.getElementById("t");
+  t.addEventListener("input", () => {
+    document.getElementById("count").textContent = t.value.split("\n").length - 1 + " 件";
+  });
+  document.getElementById("save").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([t.value], { type: "text/plain" }));
+    a.download = "received.txt";
+    a.click();
+  });
+</script>
+</body>
+</html>

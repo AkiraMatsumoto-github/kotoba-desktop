@@ -39,6 +39,10 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 # 日本語の文章で使う全角括弧を許可する
 allowed-confusables = ["（", "）"]
 
+[tool.ty.src]
+# WSL（Linux）で動かす受信スクリプトは Windows 向けの型チェックから外す
+exclude = ["tools/poc/recv.py"]
+
 [tool.pytest]
 testpaths = ["tests"]
 qt_api = "pyside6"
