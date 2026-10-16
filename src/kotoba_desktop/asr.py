@@ -44,11 +44,11 @@ class Segment:
 
 
 class FasterWhisperEngine:
-    """faster-whisper（CTranslate2）で kotoba-whisper を動かす。"""
+    """faster-whisper（CTranslate2）で Whisper 系のモデル（既定は large-v3-turbo）を動かす。"""
 
     def __init__(
         self,
-        model: str = "kotoba-tech/kotoba-whisper-v2.0-faster",
+        model: str = "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
         *,
         device: str = "cuda",
         compute_type: str = "float16",

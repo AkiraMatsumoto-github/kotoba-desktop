@@ -6,7 +6,7 @@ kotoba-desktop の開発に参加する人向けの情報です。使い方は [
 
 ```powershell
 uv sync
-uv run hf download kotoba-tech/kotoba-whisper-v2.0-faster
+uv run hf download mobiuslabsgmbh/faster-whisper-large-v3-turbo
 uv run kotoba-desktop
 ```
 

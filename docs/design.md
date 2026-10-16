@@ -18,7 +18,7 @@ Windows に常駐し、ショートカットキーで録音している間に話
 
 | 論点 | 判定 | 推奨 |
 | --- | --- | --- |
-| kotoba-whisper を Windows + GPU で動かす | 可能 | faster-whisper + kotoba-whisper-v2.0-faster（FP16） |
+| kotoba-whisper を Windows + GPU で動かす | 可能 | faster-whisper + kotoba-whisper-v2.0-faster（FP16）。比較の結果、既定は Whisper large-v3-turbo に変更（第 4 章） |
 | RTX 5060 Ti（Blackwell）対応 | 可能（版の指定が必要） | CTranslate2 4.6.3 以降（CUDA 12.8 対応）。Blackwell では INT8 が無効なので FP16 |
 | 常駐 + ショートカットキー | 可能 | タスクトレイ常駐、RegisterHotKey で開始・終了（トグル）、Win+H 風のウィジェット |
 | フォーカス中の欄へ入力 | 可能 | クリップボード貼り付け（アプリ別に貼り付けキーを切替）、予備に Unicode 打鍵 |
@@ -37,7 +37,7 @@ Windows に常駐し、ショートカットキーで録音している間に話
 | --- | --- | --- |
 | F1 | ログオン時に自動起動してタスクトレイに常駐。モデルは起動時に GPU へ読み込み、常駐中は保持 | MVP |
 | F2 | ショートカットキーを押して録音開始、もう一度押して終了（トグル）。終了した時点の内容をまとめて 1 回で入力する。キーは設定で変更 | MVP |
-| F3 | 録音終了後に kotoba-whisper で日本語認識し、その時点でフォーカスされている欄のカーソル位置へ挿入 | MVP |
+| F3 | 録音終了後に Whisper（既定は large-v3-turbo）で日本語認識し、その時点でフォーカスされている欄のカーソル位置へ挿入 | MVP |
 | F4 | Enter は送らない（ターミナルでのコマンド実行やチャットの誤送信を防ぐ）。改行も除去して 1 行で渡す | MVP |
 | F5 | Windows 標準の音声入力に似た小さなウィジェットで録音中・認識中を表示。クリックでも開始・終了でき、クリックしても入力先のフォーカスを奪わない | MVP |
 | F6 | 直近の認識結果を履歴として保持し、トレイや別キーから再入力できる（入力失敗時の救済） | MVP |
@@ -70,6 +70,24 @@ kotoba-whisper v2.0 は Whisper large-v3 のエンコーダをそのまま使い
 | [kotoba-whisper-bilingual-v1.0-faster](https://huggingface.co/kotoba-tech/kotoba-whisper-bilingual-v1.0-faster) | CTranslate2 | 日英対応 | 英語混じりが多ければ切替候補 |
 
 v2.0 単体では句読点が安定して付かない前提で設計する（v2.1 で句読点が後処理として追加された経緯からの推定。PoC で確認）。
+
+### 既定のモデルを large-v3-turbo に変えた理由
+
+v1 の開発後に、音声合成の 25 文 × 9 条件（声 4 種、早口・ゆっくり、雑音 2 段階、小さい声）の 225 本で、本番と同じ経路（VAD → 認識 → 後処理）を通して比べた。誤りは、表記の違い（三時 / 3時、パーセント / %、React / リアクトなど）を揃えた文字誤り率で数えた。
+
+| モデル | 文字誤り率 | 225 本の認識時間 | GPU メモリ（FP16 / INT8） |
+| --- | --- | --- | --- |
+| kotoba-whisper-v2.0-faster | 3.6% | 41 秒 | 2.1 / 1.1 GB |
+| kotoba-whisper-bilingual-v1.0-faster | 3.5% | 41 秒 | — |
+| [faster-whisper-large-v3-turbo](https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo) | **1.8%** | 45 秒 | 2.2 / 1.2 GB |
+| faster-whisper-large-v3 | 1.5% | 95 秒 | — |
+
+- turbo は GitHub、Python などを英語のつづりで書き、「件名」「四半期」も正しく選べた。「至急 / 支給」「化学 / 科学」はどのモデルも誤る。
+- 実際の音声（ラジオの掛け合い、記者会見のあいさつ）では、掛け合いはほぼ互角、きちんとした話し方は turbo がはっきり良かった。音声入力は後者に近いので、既定を turbo にした。
+- hotwords、initial_prompt、beam 5 は、どのモデルでも改善しなかった（initial_prompt は文頭の欠落や句読点の消失を起こす）。
+- bilingual の faster 版は tokenizer.json を含まず、faster-whisper が旧 Whisper の語彙で補うため、transcribe の指示が translate の ID になって言い換えが出る（large-v3 の tokenizer.json を足すと 3.5% に戻る）。
+- 無音・雑音だけの音声は、どのモデルも VAD で止まり入力されない。VAD を通さないと turbo は「ご視聴ありがとうございました」を出すので、禁止フレーズの既定値は残す。
+- RTX 5060 Ti では `int8_float16` も動き、GPU メモリは半分になる（速さと認識結果は FP16 と同じだった）。
 
 ### 推論エンジン
 
@@ -220,7 +238,7 @@ min_speech_ms = 300
 max_chunk_s = 15          # 長い発話はこの秒数以内に区切って認識する
 
 [asr]
-model = "kotoba-tech/kotoba-whisper-v2.0-faster"
+model = "mobiuslabsgmbh/faster-whisper-large-v3-turbo"
 compute_type = "float16"
 beam_size = 1
 hotwords = "Claude Code Cursor WSL"
@@ -346,7 +364,7 @@ build-backend = "uv_build"
 | 環境の同期 | `uv sync`（uv.lock どおりに `.venv` を作る） |
 | 開発中の起動 | `uv run kotoba-desktop` |
 | 検査 | `uv run ruff check` / `uv run ruff format` / `uv run ty check` / `uv run pytest` |
-| モデル取得 | `uv run hf download kotoba-tech/kotoba-whisper-v2.0-faster` |
+| モデル取得 | `uv run hf download mobiuslabsgmbh/faster-whisper-large-v3-turbo` |
 | 依存の更新 | `uv lock --upgrade` → `uv sync` |
 | 常駐用のインストール | `uv tool install --editable .` |
 

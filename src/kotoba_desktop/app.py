@@ -115,7 +115,7 @@ class App(QObject):
         cached = model_cached(cfg.model)
         if not cached:
             self.controller.notify.emit(
-                TITLE, "モデルをダウンロードしています（初回のみ、約 1.5 GB）"
+                TITLE, "モデルをダウンロードしています（初回のみ、約 1.6 GB）"
             )
         return FasterWhisperEngine(
             cfg.model,

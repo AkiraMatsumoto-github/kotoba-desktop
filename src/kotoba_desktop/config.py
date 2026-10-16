@@ -61,7 +61,8 @@ class AudioConfig(_Section):
 
 
 class AsrConfig(_Section):
-    model: str = "kotoba-tech/kotoba-whisper-v2.0-faster"
+    # 誤りが kotoba-whisper v2.0 の約半分だったので既定にした（設計書 第 4 章）
+    model: str = "mobiuslabsgmbh/faster-whisper-large-v3-turbo"
     device: Literal["cuda", "cpu"] = "cuda"
     compute_type: str = "float16"
     beam_size: int = Field(1, ge=1, le=10)

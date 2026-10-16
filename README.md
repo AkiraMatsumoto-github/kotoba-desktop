@@ -13,7 +13,7 @@
 ## 特長
 
 - **パソコンの中だけで動きます。** 音声認識は手元の GPU で行い、音声や文字をインターネットに送りません（ネットワークを使うのは、最初に音声認識のモデルをダウンロードするときだけです）。
-- **日本語に強い音声認識です。** 日本語向けに作られた [kotoba-whisper](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-faster) を使います。
+- **高い精度の音声認識です。** OpenAI の [Whisper large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo) を使います。設定ファイルで、日本語向けに作られた [kotoba-whisper](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-faster) に切り替えることもできます。
 - **文字が崩れません。** 1 文字ずつキーを打つのではなく、まとめて 1 回で貼り付けるので、ターミナルなどでも文字の順番が入れ替わったり、勝手に変換されたりしません。貼り付けに使ったクリップボードは、元の内容に戻します。
 - **Enter は押しません。** 入力するだけなので、チャットで勝手に送信されたり、ターミナルでコマンドが実行されたりしません。
 
@@ -36,7 +36,7 @@ NVIDIA のドライバは、できるだけ新しいものにしておいてく�
    - 「Windows にサインインしたときに起動する」にチェックを入れておくと、パソコンを起動するたびに自動で起動します。
 3. インストールが終わると、アプリが起動します。
 
-**初回の起動時だけ**、音声認識のモデル（約 1.5 GB）を自動でダウンロードします。回線によっては数分〜十数分かかり、終わるまでトレイのアイコンは灰色のままです。
+**初回の起動時だけ**、音声認識のモデル（約 1.6 GB）を自動でダウンロードします。回線によっては数分〜十数分かかり、終わるまでトレイのアイコンは灰色のままです。
 
 新しいバージョンが出たときは、同じように新しい `setup.exe` を実行すれば上書きされます（設定はそのまま残ります）。
 
@@ -138,7 +138,7 @@ NVIDIA のドライバは、できるだけ新しいものにしておいてく�
 1. 「設定」→「アプリ」→「インストールされているアプリ」で kotoba-desktop の「…」→「アンインストール」を選びます（起動中なら自動で終了します）。
 2. 設定とモデルは残るので、要らなければ次のフォルダも削除します。
    - 設定とログ: `%APPDATA%\kotoba-desktop`
-   - 音声認識のモデル: `%USERPROFILE%\.cache\huggingface\hub\models--kotoba-tech--kotoba-whisper-v2.0-faster`
+   - 音声認識のモデル: `%USERPROFILE%\.cache\huggingface\hub` の中の `models--mobiuslabsgmbh--faster-whisper-large-v3-turbo`（kotoba-whisper に切り替えていた場合は `models--kotoba-tech--kotoba-whisper-v2.0-faster` も）
 
 ## プライバシー
 
@@ -156,7 +156,8 @@ Copyright (c) 2026 AkiraMatsumoto-github
 
 | 名前 | 用途 | ライセンス |
 | --- | --- | --- |
-| [kotoba-whisper-v2.0-faster](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-faster)（Kotoba Technologies） | 音声認識のモデル | MIT（元のモデル [kotoba-whisper-v2.0](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0) は Apache-2.0） |
+| [Whisper large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo)（OpenAI）/ [faster-whisper 用の変換版](https://huggingface.co/mobiuslabsgmbh/faster-whisper-large-v3-turbo) | 音声認識のモデル（既定） | MIT |
+| [kotoba-whisper-v2.0-faster](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-faster)（Kotoba Technologies） | 音声認識のモデル（切り替えたとき） | MIT（元のモデル [kotoba-whisper-v2.0](https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0) は Apache-2.0） |
 | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) / [CTranslate2](https://github.com/OpenNMT/CTranslate2) | 音声認識の実行 | MIT |
 | [PySide6](https://doc.qt.io/qtforpython-6/)（Qt for Python） | 画面（パネル、トレイ、設定画面） | LGPL-3.0 |
 | [sounddevice](https://github.com/spatialaudio/python-sounddevice) / [soxr](https://github.com/dofuuz/python-soxr) | 録音 / 音声の変換 | MIT / LGPL-2.1 |

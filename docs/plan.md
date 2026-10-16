@@ -157,6 +157,10 @@
 - [ ] **P3-03** exe 単体での配布（PyInstaller / Nuitka）
   → PyInstaller + Inno Setup のインストーラーを作り、タグの push で GitHub Release に載せる（`packaging/`、`.github/workflows/release.yml`）。固めた exe でモデルの読み込みと GPU での認識は確認済み。インストーラーの動作は最初のリリースで確かめる
 
+## Phase 1 以降の見直し
+
+- [x] 既定のモデルを kotoba-whisper-v2.0-faster から Whisper large-v3-turbo に変更（比較の結果は設計書 第 4 章）
+
 ## 未決事項
 
 | 項目 | 決め方 | 関連タスク |
