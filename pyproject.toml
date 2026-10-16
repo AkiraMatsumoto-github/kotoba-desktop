@@ -1,0 +1,52 @@
+[project]
+name = "kotoba-input"
+version = "0.1.0"
+description = "kotoba-whisper で日本語を GPU 認識し、フォーカス中のテキスト欄へ入力する Windows 常駐の音声入力アプリ"
+readme = "README.md"
+authors = [
+    { name = "AkiraMatsumoto-github", email = "95224877+AkiraMatsumoto-github@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "ctranslate2>=4.6.3",
+    "faster-whisper>=1.2.1",
+    "huggingface-hub>=2.2.0",
+    "numpy>=2.5.4",
+    "nvidia-cublas-cu12>=12.9.2.10",
+    "pydantic>=2.14.1",
+    "pyside6-essentials>=6.12.0",
+    "sounddevice>=0.5.6",
+    "soxr>=1.1.0",
+]
+
+[project.gui-scripts]
+kotoba-input = "kotoba_input.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.11.1,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Windows 専用アプリなので依存解決も Windows に限定する
+environments = ["sys_platform == 'win32'"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+# 日本語の文章で使う全角括弧を許可する
+allowed-confusables = ["（", "）"]
+
+[tool.pytest]
+testpaths = ["tests"]
+qt_api = "pyside6"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-qt>=4.5.0",
+    "ruff>=0.17.1",
+    "ty>=0.0.88",
+]

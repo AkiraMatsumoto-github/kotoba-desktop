@@ -1,0 +1,2 @@
+# WSL と Windows の両方から触るので改行は LF に統一する
+* text=auto eol=lf
