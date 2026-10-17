@@ -3,12 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Platform: Windows 11](https://img.shields.io/badge/Platform-Windows%2011-0078d4.svg)
 
-話した日本語を、そのとき開いているアプリの入力欄に文字で入力する、Windows 用の音声入力アプリです。
+Windowsの標準音声入力機能の精度が低いため、ローカルのみで動く音声入力ツールを作成しました
 
 ショートカットキー（最初は **Ctrl+H**）を押して話し、もう一度押すと、話した内容が文字になってカーソルの位置に入ります。メモ帳、ブラウザ、Slack、VS Code / Cursor、ターミナルなど、文字を入力できる場所ならどこでも使えます。
-
-> [!NOTE]
-> 開発中のアプリです。作者の環境では動作を確認していますが、不具合が残っている可能性があります。
 
 ## 特長
 
